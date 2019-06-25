@@ -37,6 +37,16 @@ for i in items:
         for v in reachable_sets[i][u]:
             I[i][u][v] = 1
 
+intersections = np.zeros((len(items),len(users),len(users)))
+for i in items:
+    for u in users:
+        for v in users:
+            if v!=u:
+                intersections[i][u][v] = len(set(reachable_sets[i][u])&set(reachable_sets[i][v]))
+
+size_of_sets = np.vectorize(len)
+reachable_sets_len = size_of_sets(reachable_sets)
+
 # Objective function
 def objective(z):
 
@@ -58,13 +68,13 @@ def objective(z):
 
     # Constraints
     g = [0.0,np.zeros(len(users))]
-    print g
+   
     g[0] = sum([x[i] for i in items]) - c
     g[1] = [sum([y[i][u] for i in items]) + sum([sum([I[i][u][v]*y[i][u] for v in users]) for i in items])-L for u in users]
     fail=0
 
     return -sum([x[i]*sum([(1+len(reachable_sets[i][u])) * y[i][u] - 0.5*sum([len(set(reachable_sets[i][u])&set(reachable_sets[i][v]))*y[i][u]*y[i][v] for v in users if v!=u]) for u in users]) for i in items]),g,fail
-
+    #return -np.dot(x,(((1+reachable_sets_len)*y).sum(axis=1) - 0.5*(y*((y[:,:,None]*intersections).sum(axis=2))).sum(axis=1)))
 
 # Initialize problem
 opt_prob = Optimization('Algorithm A: Real-valued Relaxation',objective,use_groups=True)
@@ -72,11 +82,11 @@ opt_prob.addVarGroup('x',len(x),'c',lower=0.0,upper=1.0,value=0.5)
 opt_prob.addVarGroup('y',len(y.flatten()),'c',lower=0.0,upper=1.0,value=0.5)
 opt_prob.addObj('f')
 opt_prob.addCon('g0','e')
-opt_prob.addConGroup('g1',len(users),'i')
-print opt_prob
+#opt_prob.addConGroup('g1',len(users),'i')
+print(opt_prob)
 
 # Instantiate Optimizer (SLSQP) & Solve Problem
 slsqp = SLSQP()
 slsqp.setOption('IPRINT',-1)
 slsqp(opt_prob,sens_type='FD')
-print opt_prob.solution(0)
+print(opt_prob.solution(0))
